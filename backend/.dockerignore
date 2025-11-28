@@ -1,0 +1,10 @@
+venv
+__pycache__
+*.pyc
+.env
+trip_planner.db
+*.sqlite
+dist
+build
+.pytest_cache
+.mypy_cache
