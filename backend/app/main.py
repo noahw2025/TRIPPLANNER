@@ -8,9 +8,17 @@ from .schemas import HealthResponse
 
 app = FastAPI(title="Trip Itinerary Planner")
 
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://tripplanner-production-8891.up.railway.app",  # backend self
+]
+
+# Allow any *.vercel.app frontend (for deployed clients)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
