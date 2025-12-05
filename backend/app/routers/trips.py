@@ -21,6 +21,7 @@ from app.schemas import (
     TripRead,
     TripUpdate,
 )
+from app.services.budgeting import allocate_default_envelopes, ensure_envelopes
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
@@ -68,6 +69,8 @@ def create_trip(payload: TripCreate, db: Session = Depends(get_db), current_user
     db.add(trip)
     db.commit()
     db.refresh(trip)
+    ensure_envelopes(trip, db, allocate_default_envelopes(trip))
+    db.commit()
     return trip
 
 
@@ -180,57 +183,89 @@ def export_trip_pdf(trip_id: int, db: Session = Depends(get_db), current_user=De
     p = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
 
-    y = height - 50
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(50, y, f"Trip: {trip.name}")
-    y -= 20
-    p.setFont("Helvetica", 12)
-    p.drawString(50, y, f"Destination: {trip.destination}")
-    y -= 15
-    p.drawString(50, y, f"Dates: {trip.start_date} to {trip.end_date}")
-    y -= 25
+    margin = 50
+    y = height - margin
 
-    p.setFont("Helvetica-Bold", 14)
-    p.drawString(50, y, "Events")
-    y -= 18
+    def new_page():
+        nonlocal y
+        p.showPage()
+        y = height - margin
+
+    def line_break(amount=16):
+        nonlocal y
+        y -= amount
+        if y < margin:
+            new_page()
+
+    p.setFont("Helvetica-Bold", 18)
+    p.drawString(margin, y, trip.name)
+    line_break(22)
+
     p.setFont("Helvetica", 11)
+    p.drawString(margin, y, f"Destination: {trip.destination}")
+    line_break(14)
+    p.drawString(margin, y, f"Dates: {trip.start_date} to {trip.end_date}")
+    line_break(20)
+
+    # Section: Events grouped by date
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(margin, y, "Itinerary")
+    line_break(18)
+    p.setFont("Helvetica", 11)
+    current_date = None
     for evt in events:
-        line = f"{evt.date} - {evt.title} ({evt.type})"
+        if evt.date != current_date:
+            current_date = evt.date
+            p.setFont("Helvetica-Bold", 11)
+            p.drawString(margin + 5, y, str(current_date))
+            line_break(14)
+            p.setFont("Helvetica", 11)
+        line = f"• {evt.title} ({evt.type})"
         if evt.start_time:
             line += f" @ {evt.start_time}"
-        p.drawString(60, y, line)
-        y -= 14
-        if y < 80:
-            p.showPage()
-            y = height - 50
+        if evt.cost:
+            line += f"  · Cost: ${evt.cost:.2f}"
+        p.drawString(margin + 12, y, line)
+        line_break(12)
+        if evt.notes:
+            p.setFont("Helvetica-Oblique", 10)
+            p.drawString(margin + 18, y, f"Notes: {evt.notes}")
+            p.setFont("Helvetica", 11)
+            line_break(12)
 
-    y -= 10
+    line_break(12)
+
+    # Section: Budget
+    planned_total_all = sum(env.planned_amount for env in envelopes)
+    actual_total_all = sum(exp.amount for exp in expenses)
     p.setFont("Helvetica-Bold", 14)
-    p.drawString(50, y, "Budget")
-    y -= 18
+    p.drawString(margin, y, "Budget")
+    line_break(16)
     p.setFont("Helvetica", 11)
+    p.drawString(margin + 5, y, f"Planned total: ${planned_total_all:.2f}   Actual total: ${actual_total_all:.2f}")
+    line_break(16)
     for env in envelopes:
         actual = sum(exp.amount for exp in expenses if exp.envelope_id == env.id)
-        p.drawString(60, y, f"{env.category}: planned ${env.planned_amount:.2f} / actual ${actual:.2f}")
-        y -= 14
-        if y < 80:
-            p.showPage()
-            y = height - 50
+        pct = f"{(actual / env.planned_amount * 100):.0f}%" if env.planned_amount else "0%"
+        p.drawString(margin + 8, y, f"{env.category.capitalize()}: planned ${env.planned_amount:.2f} / actual ${actual:.2f} ({pct} used)")
+        line_break(12)
+
+    line_break(12)
 
     if alerts:
-        y -= 10
         p.setFont("Helvetica-Bold", 14)
-        p.drawString(50, y, "Weather Alerts")
-        y -= 18
+        p.drawString(margin, y, "Weather Alerts")
+        line_break(16)
         p.setFont("Helvetica", 11)
         for alert in alerts:
-            p.drawString(60, y, f"{alert.date} [{alert.severity}] {alert.summary}")
-            y -= 14
-            if y < 80:
-                p.showPage()
-                y = height - 50
+            p.drawString(margin + 5, y, f"{alert.date} [{alert.severity.upper()}] {alert.summary}")
+            line_break(14)
 
     p.showPage()
     p.save()
     buffer.seek(0)
-    return StreamingResponse(buffer, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="trip-{trip_id}.pdf"'})
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="trip-{trip_id}.pdf"'},
+    )

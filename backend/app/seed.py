@@ -46,6 +46,11 @@ def seed_demo(db: Session) -> None:
             destination="New York City",
             start_date=start,
             end_date=end,
+            total_budget=2500.0,
+            currency="USD",
+            party_size=2,
+            price_sensitivity="balanced",
+            trip_type="cultural",
         )
         db.add(trip)
         db.commit()
@@ -100,6 +105,9 @@ def seed_demo(db: Session) -> None:
             type=etype,
             cost=cost,
             notes=notes,
+            category_type="outdoor" if etype in {"activity", "flight"} else "indoor",
+            reservation_link=None,
+            is_refundable=False,
         )
         db.add(event)
         return event

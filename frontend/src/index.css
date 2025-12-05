@@ -67,13 +67,21 @@ select {
   padding: 0.65rem 0.75rem;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
   color: #e8ecf4;
+}
+select {
+  appearance: none;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #e8ecf4;
+  border: 1px solid rgba(99, 102, 241, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.25);
 }
 input:focus,
 select:focus {
   outline: 2px solid #6366f1;
   border-color: #6366f1;
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 label {
@@ -82,4 +90,9 @@ label {
   gap: 0.35rem;
   font-size: 0.95rem;
   color: #cbd5e1;
+}
+.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
 }

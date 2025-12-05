@@ -12,6 +12,8 @@ export default function BudgetSummary({ summary }: Props) {
       <div className="totals">
         <div>Planned Total: ${summary.totals.planned_total_all.toFixed(2)}</div>
         <div>Actual Total: ${summary.totals.actual_total_all.toFixed(2)}</div>
+        <div>Remaining: ${summary.remaining_total.toFixed(2)}</div>
+        <div>Per day suggestion: ${summary.recommended_daily_spend.toFixed(2)}</div>
       </div>
       <table>
         <thead>

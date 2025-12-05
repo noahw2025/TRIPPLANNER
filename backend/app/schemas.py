@@ -36,6 +36,11 @@ class TripCreate(BaseModel):
     destination: str
     start_date: date
     end_date: date
+    total_budget: float = 0.0
+    currency: str = "USD"
+    party_size: int = 1
+    price_sensitivity: str = "balanced"
+    trip_type: str = "balanced"
 
 
 class TripUpdate(BaseModel):
@@ -43,6 +48,11 @@ class TripUpdate(BaseModel):
     destination: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    total_budget: Optional[float] = None
+    currency: Optional[str] = None
+    party_size: Optional[int] = None
+    price_sensitivity: Optional[str] = None
+    trip_type: Optional[str] = None
 
 
 class TripRead(BaseModel):
@@ -52,6 +62,11 @@ class TripRead(BaseModel):
     destination: str
     start_date: date
     end_date: date
+    total_budget: float
+    currency: str
+    party_size: int
+    price_sensitivity: str
+    trip_type: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -107,6 +122,9 @@ class EventCreate(BaseModel):
     type: str
     cost: Optional[float] = None
     notes: Optional[str] = None
+    category_type: Optional[str] = "other"
+    is_refundable: Optional[bool] = False
+    reservation_link: Optional[str] = None
 
 
 class EventUpdate(BaseModel):
@@ -118,6 +136,9 @@ class EventUpdate(BaseModel):
     type: Optional[str] = None
     cost: Optional[float] = None
     notes: Optional[str] = None
+    category_type: Optional[str] = None
+    is_refundable: Optional[bool] = None
+    reservation_link: Optional[str] = None
 
 
 class EventRead(BaseModel):
@@ -131,6 +152,9 @@ class EventRead(BaseModel):
     type: str
     cost: Optional[float] = None
     notes: Optional[str] = None
+    category_type: Optional[str] = None
+    is_refundable: bool
+    reservation_link: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -193,9 +217,22 @@ class TripWeatherDay(BaseModel):
     precip_prob: int
     summary: str
     advice: str
+    risk_score: int
+    risk_category: str
+    contributing_factors: list[str]
 
     class Config:
         orm_mode = False
+
+
+class WeatherAlertDetail(BaseModel):
+    id: int
+    trip_id: int
+    date: date
+    severity: str
+    summary: str
+    contributing_factors: list[str] = []
+    provider_payload: Optional[Any] = None
 
 
 class TripWeatherResponse(BaseModel):
@@ -203,3 +240,20 @@ class TripWeatherResponse(BaseModel):
     start_date: date
     end_date: date
     days: list[TripWeatherDay]
+    alerts: list[WeatherAlertDetail] = []
+
+
+class BudgetEnvelopeSummary(BaseModel):
+    envelope: BudgetEnvelopeRead
+    actual_spent: float
+    remaining: float
+    percent_used: float
+
+
+class BudgetSummaryResponse(BaseModel):
+    envelopes: list[BudgetEnvelopeSummary]
+    expenses: list[ExpenseRead]
+    totals: dict
+    remaining_total: float
+    recommended_daily_spend: float
+    categories: dict

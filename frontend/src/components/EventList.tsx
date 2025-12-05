@@ -34,13 +34,22 @@ export default function EventList({ events, days, onAddForDay }: Props) {
               <ul>
                 {list.map((evt) => (
                   <li key={evt.id}>
-                    <div>
-                      <strong>{evt.title}</strong>
-                      {evt.start_time && ` @ ${evt.start_time}`}
+                    <div className="event-row">
+                      <div>
+                        <strong>{evt.title}</strong>
+                        {evt.start_time && ` @ ${evt.start_time}`}
+                        <div className="muted">{evt.type}</div>
+                        {evt.category_type && evt.category_type !== 'other' ? (
+                          <span className="chip">{evt.category_type}</span>
+                        ) : null}
+                        {evt.is_refundable ? <span className="chip low">Refundable</span> : null}
+                        {evt.reservation_link ? (
+                          <div><a href={evt.reservation_link} target="_blank" rel="noreferrer">Reservation</a></div>
+                        ) : null}
+                      </div>
+                      {evt.cost ? <div>Cost: ${evt.cost.toFixed(2)}</div> : null}
+                      {evt.notes ? <div>{evt.notes}</div> : null}
                     </div>
-                    <div>{evt.type}</div>
-                    {evt.cost ? <div>Cost: ${evt.cost.toFixed(2)}</div> : null}
-                    {evt.notes ? <div>{evt.notes}</div> : null}
                   </li>
                 ))}
               </ul>

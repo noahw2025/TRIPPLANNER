@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import BudgetEnvelope, Expense, Trip
 from app.routers.auth import get_current_user
-from app.schemas import BudgetEnvelopeCreate, BudgetEnvelopeRead, ExpenseCreate, ExpenseRead
+from app.schemas import BudgetEnvelopeCreate, BudgetEnvelopeRead, ExpenseCreate, ExpenseRead, BudgetEnvelopeSummary, BudgetSummaryResponse
+from app.services.budgeting import allocate_default_envelopes, ensure_envelopes
 
 router = APIRouter(tags=["budget"])
 
@@ -83,15 +84,36 @@ def budget_summary(trip_id: int, db: Session = Depends(get_db), current_user=Dep
     planned_total_all = sum(category_planned.values())
     actual_total_all = sum(category_actual.values())
 
-    return {
-        "envelopes": [BudgetEnvelopeRead.model_validate(e) for e in envelopes],
-        "expenses": [ExpenseRead.model_validate(e) for e in expenses],
-        "categories": {
+    # Remaining budget and forward-looking guidance
+    remaining_total = max(trip.total_budget - actual_total_all, 0.0)
+    days_left = max((trip.end_date - date.today()).days + 1, 1)
+    recommended_daily = remaining_total / days_left if days_left > 0 else 0.0
+
+    envelope_summaries: List[BudgetEnvelopeSummary] = []
+    for env in envelopes:
+        actual = sum(exp.amount for exp in expenses if exp.envelope_id == env.id)
+        remaining = max(env.planned_amount - actual, 0.0)
+        pct = env.planned_amount and max(0.0, min(100.0, (actual / env.planned_amount) * 100.0)) or 0.0
+        envelope_summaries.append(
+            BudgetEnvelopeSummary(
+                envelope=BudgetEnvelopeRead.model_validate(env),
+                actual_spent=actual,
+                remaining=remaining,
+                percent_used=pct,
+            )
+        )
+
+    return BudgetSummaryResponse(
+        envelopes=envelope_summaries,
+        expenses=[ExpenseRead.model_validate(e) for e in expenses],
+        categories={
             cat: {"planned_total": category_planned.get(cat, 0.0), "actual_total": category_actual.get(cat, 0.0)}
             for cat in set(category_planned.keys()).union(set(category_actual.keys()))
         },
-        "totals": {"planned_total_all": planned_total_all, "actual_total_all": actual_total_all},
-    }
+        totals={"planned_total_all": planned_total_all, "actual_total_all": actual_total_all},
+        remaining_total=remaining_total,
+        recommended_daily_spend=recommended_daily,
+    )
 
 
 @router.post("/trips/{trip_id}/envelopes", response_model=BudgetEnvelopeRead, status_code=status.HTTP_201_CREATED)
@@ -196,3 +218,14 @@ def delete_expense(expense_id: int, db: Session = Depends(get_db), current_user=
     db.delete(expense)
     db.commit()
     return None
+
+
+@router.post("/trips/{trip_id}/budget/recalculate", response_model=List[BudgetEnvelopeRead])
+def recalc_envelopes(trip_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    trip = _get_trip(db, trip_id)
+    _require_edit_access(trip, current_user.id)
+
+    ensure_envelopes(trip, db, allocate_default_envelopes(trip))
+    db.commit()
+    updated = db.query(BudgetEnvelope).filter(BudgetEnvelope.trip_id == trip_id).all()
+    return [BudgetEnvelopeRead.model_validate(env) for env in updated]

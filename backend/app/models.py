@@ -2,6 +2,7 @@
 
 from sqlalchemy import Column, Date, Float, ForeignKey, Integer, JSON, String, Text, Time
 from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy import Boolean
 
 Base = declarative_base()
 
@@ -27,6 +28,11 @@ class Trip(Base):
     destination = Column(String, nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
+    total_budget = Column(Float, nullable=False, default=0.0)
+    currency = Column(String, nullable=False, default="USD")
+    party_size = Column(Integer, nullable=False, default=1)
+    price_sensitivity = Column(String, nullable=False, default="balanced")
+    trip_type = Column(String, nullable=False, default="balanced")
 
     owner = relationship("User", back_populates="trips_owned")
     members = relationship("TripMember", back_populates="trip", cascade="all, delete-orphan")
@@ -88,6 +94,9 @@ class Event(Base):
     type = Column(String, nullable=False)
     cost = Column(Float, nullable=True)
     notes = Column(Text, nullable=True)
+    category_type = Column(String, nullable=False, default="other")
+    is_refundable = Column(Boolean, nullable=False, default=False)
+    reservation_link = Column(String, nullable=True)
 
     trip = relationship("Trip", back_populates="events")
     location = relationship("Location", back_populates="events")
@@ -101,6 +110,7 @@ class BudgetEnvelope(Base):
     trip_id = Column(Integer, ForeignKey("trips.id"), nullable=False, index=True)
     category = Column(String, nullable=False)
     planned_amount = Column(Float, nullable=False)
+    notes = Column(Text, nullable=True)
 
     trip = relationship("Trip", back_populates="budget_envelopes")
     expenses = relationship("Expense", back_populates="envelope")

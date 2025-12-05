@@ -25,6 +25,11 @@ export interface TripRead {
   destination: string;
   start_date: string;
   end_date: string;
+  total_budget: number;
+  currency: string;
+  party_size: number;
+  price_sensitivity: string;
+  trip_type: string;
 }
 
 export interface TripCreate {
@@ -33,6 +38,11 @@ export interface TripCreate {
   destination: string;
   start_date: string;
   end_date: string;
+  total_budget?: number;
+  currency?: string;
+  party_size?: number;
+  price_sensitivity?: string;
+  trip_type?: string;
 }
 
 export interface TripUpdate {
@@ -40,6 +50,11 @@ export interface TripUpdate {
   destination?: string;
   start_date?: string;
   end_date?: string;
+  total_budget?: number;
+  currency?: string;
+  party_size?: number;
+  price_sensitivity?: string;
+  trip_type?: string;
 }
 
 export interface TripMemberRead {
@@ -74,6 +89,9 @@ export interface EventRead {
   type: string;
   cost?: number | null;
   notes?: string | null;
+  category_type?: string | null;
+  is_refundable: boolean;
+  reservation_link?: string | null;
 }
 
 export interface EventCreate {
@@ -86,6 +104,9 @@ export interface EventCreate {
   type: string;
   cost?: number | null;
   notes?: string | null;
+  category_type?: string | null;
+  is_refundable?: boolean;
+  reservation_link?: string | null;
 }
 
 export interface EventUpdate extends Partial<EventCreate> {}
@@ -155,6 +176,9 @@ export interface TripWeatherDay {
   precip_prob: number;
   summary: string;
   advice: string;
+  risk_score: number;
+  risk_category: string;
+  contributing_factors: string[];
 }
 
 export interface TripWeatherResponse {
@@ -162,11 +186,31 @@ export interface TripWeatherResponse {
   start_date: string;
   end_date: string;
   days: TripWeatherDay[];
+  alerts: WeatherAlertDetail[];
+}
+
+export interface WeatherAlertDetail {
+  id: number;
+  trip_id: number;
+  date: string;
+  severity: string;
+  summary: string;
+  contributing_factors: string[];
+  provider_payload?: any;
+}
+
+export interface BudgetEnvelopeSummary {
+  envelope: BudgetEnvelopeRead;
+  actual_spent: number;
+  remaining: number;
+  percent_used: number;
 }
 
 export interface BudgetSummaryResponse {
-  envelopes: BudgetEnvelopeRead[];
+  envelopes: BudgetEnvelopeSummary[];
   expenses: ExpenseRead[];
   categories: Record<string, { planned_total: number; actual_total: number }>;
   totals: { planned_total_all: number; actual_total_all: number };
+  remaining_total: number;
+  recommended_daily_spend: number;
 }
